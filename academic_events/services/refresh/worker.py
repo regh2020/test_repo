@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime
 
+from academic_events.config import AI_EXTRACTION_ENABLED, ANTHROPIC_API_KEY
 from academic_events.models.conference import (
     ConferenceUpdate,
     ExtractionRecord,
@@ -17,6 +19,7 @@ from academic_events.repositories.interfaces import (
     ImportantDateRepository,
     SourceRepository,
 )
+from academic_events.services.ingestion.ai_extractor import ai_extract_fields
 from academic_events.services.ingestion.cleaner import clean_html, get_meta_and_structured
 from academic_events.services.ingestion.extractor import extract_fields
 from academic_events.services.ingestion.fetcher import fetch_url
@@ -79,7 +82,22 @@ class RefreshWorker:
         if changed:
             text = clean_html(result.html)
             meta = get_meta_and_structured(result.html)
-            new_records = extract_fields(text, meta, source_id)
+
+            # Run heuristic extraction
+            heuristic_records = extract_fields(text, meta, source_id)
+
+            # Run AI extraction if enabled
+            ai_records: list[ExtractionRecord] = []
+            if AI_EXTRACTION_ENABLED:
+                ai_records, _ = await ai_extract_fields(
+                    text=text,
+                    page_url=source.url,
+                    source_id=source_id,
+                    api_key=ANTHROPIC_API_KEY,
+                )
+
+            # Merge: AI takes priority
+            new_records = self._merge_records(ai_records, heuristic_records)
 
             for rec in new_records:
                 self._extractions.create(rec)
@@ -87,15 +105,26 @@ class RefreshWorker:
             # Update conference with best new values
             if source.conference_id:
                 update_fields: dict = {}
-                for field in ("name", "city", "country", "venue", "start_date", "end_date", "cfp_url"):
+                for field in (
+                    "name", "acronym", "series", "city", "country", "venue",
+                    "start_date", "end_date", "cfp_url",
+                ):
                     candidates = [r for r in new_records if r.field_name == field]
                     if candidates:
                         candidates.sort(key=lambda r: r.confidence, reverse=True)
-                        # Only update if new confidence >= existing
                         old = self._extractions.list_for_field(source_id, field)
                         old_best = max((r.confidence for r in old if r not in new_records), default=0.0)
                         if candidates[0].confidence >= old_best:
                             update_fields[field] = candidates[0].extracted_value
+
+                # Handle topics from AI extraction
+                topics_candidates = [r for r in new_records if r.field_name == "topics"]
+                if topics_candidates:
+                    topics_candidates.sort(key=lambda r: r.confidence, reverse=True)
+                    try:
+                        update_fields["topics"] = json.loads(topics_candidates[0].extracted_value)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
 
                 if update_fields:
                     self._conferences.update(
@@ -138,3 +167,23 @@ class RefreshWorker:
             r = await self.refresh_source(source.id)
             results.append(r)
         return results
+
+    @staticmethod
+    def _merge_records(
+        ai_records: list[ExtractionRecord],
+        heuristic_records: list[ExtractionRecord],
+    ) -> list[ExtractionRecord]:
+        """Merge AI and heuristic records, preferring AI for same fields."""
+        if not ai_records:
+            return heuristic_records
+
+        ai_fields: set[str] = set()
+        for rec in ai_records:
+            ai_fields.add(rec.field_name)
+
+        merged = list(ai_records)
+        for rec in heuristic_records:
+            if rec.field_name not in ai_fields:
+                merged.append(rec)
+
+        return merged
