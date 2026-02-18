@@ -54,15 +54,16 @@ def extract_fields(
     records: list[ExtractionRecord] = []
 
     # --- Conference name from meta / title ---
-    if "title" in meta:
+    title = meta.get("title") or meta.get("og:title")
+    if title:
         records.append(
             ExtractionRecord(
                 source_id=source_id,
                 field_name="name",
-                extracted_value=meta["title"],
-                confidence=0.7,
+                extracted_value=title,
+                confidence=0.7 if "title" in meta else 0.65,
                 extraction_method=ExtractionMethod.HEURISTIC,
-                raw_snippet=meta["title"],
+                raw_snippet=title,
             )
         )
 
@@ -166,8 +167,10 @@ def extract_fields(
                 )
             )
 
-    # --- Heuristic date extraction from plain text ---
-    lines = text.split("\n")
+    # --- Heuristic date extraction from plain text + OG description ---
+    extra_text = meta.get("og:description") or meta.get("description") or ""
+    combined = f"{text}\n{extra_text}" if extra_text else text
+    lines = combined.split("\n")
     for line in lines:
         lower = line.lower()
         for keyword_re, date_type in _DEADLINE_KEYWORDS.items():

@@ -53,6 +53,8 @@ def get_meta_and_structured(html: str) -> dict:
                     ):
                         meta["jsonld"] = item
                         break
+                if "jsonld" in meta:
+                    break
         except (json.JSONDecodeError, TypeError):
             continue
 
