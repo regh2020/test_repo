@@ -80,36 +80,16 @@ class IngestionPipeline:
         text = clean_html(result.html)
         meta = get_meta_and_structured(result.html)
 
-        # 3. Create or reuse source
+        # 3. Extract fields (using a placeholder source_id for now)
+        placeholder_source_id = str(uuid.uuid4())
+        records = extract_fields(text, meta, placeholder_source_id)
+
+        # 4. Create source and conference, then store records with correct source_id
         source_data = SourceCreate(type=SourceType.WEBSITE, url=url)
-        if attach_to_conference_id:
-            source = self._sources.create(attach_to_conference_id, source_data)
-        else:
-            source = Source(
-                id=str(uuid.uuid4()),
-                type=SourceType.WEBSITE,
-                url=url,
-            )
-
-        # 4. Extract fields
-        records = extract_fields(text, meta, source.id)
-
-        # 5. Store extraction records
-        for rec in records:
-            self._extractions.create(rec)
-
-        # 6. Update source fetch status
-        if attach_to_conference_id:
-            self._sources.update_fetch_status(
-                source.id,
-                last_fetched_at=datetime.utcnow().isoformat(),
-                last_hash=result.content_hash,
-                fetch_status="success",
-            )
-
-        # 7. Auto-create conference if not attaching
         conference_id = attach_to_conference_id
+
         if conference_id is None:
+            # Auto-create conference from extracted data
             name = self._best_value(records, "name") or f"Conference from {url}"
             conf = self._conferences.create(
                 ConferenceCreate(
@@ -124,15 +104,22 @@ class IngestionPipeline:
                 )
             )
             conference_id = conf.id
-            # Now create the source attached to the conference
-            source = self._sources.create(conference_id, source_data)
-            self._sources.update_fetch_status(
-                source.id,
-                last_fetched_at=datetime.utcnow().isoformat(),
-                last_hash=result.content_hash,
-                fetch_status="success",
-            )
-        else:
+
+        # Create source attached to the conference
+        source = self._sources.create(conference_id, source_data)
+        self._sources.update_fetch_status(
+            source.id,
+            last_fetched_at=datetime.utcnow().isoformat(),
+            last_hash=result.content_hash,
+            fetch_status="success",
+        )
+
+        # Update extraction records with the real source_id and store them
+        for rec in records:
+            rec.source_id = source.id
+            self._extractions.create(rec)
+
+        if attach_to_conference_id:
             # Update existing conference with extracted data
             update_fields: dict = {}
             for field in ("name", "city", "country", "venue", "start_date", "end_date", "cfp_url", "website_url"):
