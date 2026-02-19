@@ -88,8 +88,11 @@ class RefreshWorker:
 
             # Run AI extraction if enabled
             ai_records: list[ExtractionRecord] = []
+            ai_summary: str | None = None
+            ai_organizing: list = []
+            ai_scientific: list = []
             if AI_EXTRACTION_ENABLED:
-                ai_records, _ = await ai_extract_fields(
+                ai_records, _, ai_summary, ai_organizing, ai_scientific = await ai_extract_fields(
                     text=text,
                     page_url=source.url,
                     source_id=source_id,
@@ -126,13 +129,21 @@ class RefreshWorker:
                     except (json.JSONDecodeError, TypeError):
                         pass
 
+                # Update AI summary and committees if extracted
+                if ai_summary:
+                    update_fields["ai_summary"] = ai_summary
+                if ai_organizing:
+                    update_fields["organizing_committee"] = ai_organizing
+                if ai_scientific:
+                    update_fields["scientific_committee"] = ai_scientific
+
                 if update_fields:
                     self._conferences.update(
                         source.conference_id,
                         ConferenceUpdate(**update_fields),
                     )
 
-                # Add any new important dates
+                # Upsert important dates (prevents duplicate typed dates)
                 for rec in new_records:
                     if rec.field_name.startswith("important_date:"):
                         date_type_str = rec.field_name.split(":", 1)[1]
@@ -140,7 +151,7 @@ class RefreshWorker:
                             date_type = ImportantDateType(date_type_str)
                         except ValueError:
                             date_type = ImportantDateType.OTHER
-                        self._dates.create(
+                        self._dates.upsert(
                             source.conference_id,
                             ImportantDateCreate(
                                 type=date_type,

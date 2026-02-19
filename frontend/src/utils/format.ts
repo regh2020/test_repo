@@ -3,12 +3,13 @@ import type { ImportantDateType, ConferenceStatus } from "@/types";
 export function formatImportantDateType(type: ImportantDateType): string {
   const labels: Record<ImportantDateType, string> = {
     submission_deadline: "Submission Deadline",
-    notification: "Notification",
-    camera_ready: "Camera Ready",
+    abstract_submission_deadline: "Abstract Submission Deadline",
+    notification_date: "Notification",
+    camera_ready_deadline: "Camera Ready Deadline",
+    conference_start_date: "Conference Start",
+    conference_end_date: "Conference End",
     workshop_deadline: "Workshop Deadline",
-    early_registration: "Early Registration",
-    conference_start: "Conference Start",
-    conference_end: "Conference End",
+    registration_deadline: "Registration Deadline",
     other: "Other",
   };
   return labels[type] ?? type;

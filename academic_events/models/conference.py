@@ -16,13 +16,20 @@ class ConferenceStatus(str, enum.Enum):
 
 class ImportantDateType(str, enum.Enum):
     SUBMISSION_DEADLINE = "submission_deadline"
-    NOTIFICATION = "notification"
-    CAMERA_READY = "camera_ready"
+    ABSTRACT_SUBMISSION_DEADLINE = "abstract_submission_deadline"
+    NOTIFICATION_DATE = "notification_date"
+    CAMERA_READY_DEADLINE = "camera_ready_deadline"
+    CONFERENCE_START_DATE = "conference_start_date"
+    CONFERENCE_END_DATE = "conference_end_date"
     WORKSHOP_DEADLINE = "workshop_deadline"
-    EARLY_REGISTRATION = "early_registration"
-    CONFERENCE_START = "conference_start"
-    CONFERENCE_END = "conference_end"
+    REGISTRATION_DEADLINE = "registration_deadline"
     OTHER = "other"
+
+
+# Types that may appear at most once per conference
+UNIQUE_DATE_TYPES: frozenset[ImportantDateType] = frozenset(
+    t for t in ImportantDateType if t != ImportantDateType.OTHER
+)
 
 
 class SourceType(str, enum.Enum):
@@ -41,6 +48,13 @@ class ExtractionMethod(str, enum.Enum):
 # --- Creation / Update schemas ---
 
 
+class Person(BaseModel):
+    fullName: str
+    affiliation: str | None = None
+    role: str | None = None
+    personalUrl: str | None = None
+
+
 class ConferenceCreate(BaseModel):
     name: str
     acronym: str | None = None
@@ -56,6 +70,9 @@ class ConferenceCreate(BaseModel):
     cfp_url: str | None = None
     website_url: str | None = None
     status: ConferenceStatus = ConferenceStatus.ACTIVE
+    ai_summary: str | None = None
+    organizing_committee: list[Person] = Field(default_factory=list)
+    scientific_committee: list[Person] = Field(default_factory=list)
 
 
 class ConferenceUpdate(BaseModel):
@@ -73,6 +90,9 @@ class ConferenceUpdate(BaseModel):
     cfp_url: str | None = None
     website_url: str | None = None
     status: ConferenceStatus | None = None
+    ai_summary: str | None = None
+    organizing_committee: list[Person] | None = None
+    scientific_committee: list[Person] | None = None
 
 
 class ImportantDateCreate(BaseModel):
@@ -113,6 +133,11 @@ class Conference(BaseModel):
     updated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     # Computed from important_dates; populated by repository on list queries
     submission_deadline: str | None = None
+    # AI-generated summary
+    ai_summary: str | None = None
+    # Committee members
+    organizing_committee: list[Person] = Field(default_factory=list)
+    scientific_committee: list[Person] = Field(default_factory=list)
 
 
 class ImportantDate(BaseModel):

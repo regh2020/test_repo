@@ -14,6 +14,7 @@ from academic_events.models.conference import (
     ExtractionRecord,
     ImportantDateCreate,
     ImportantDateType,
+    Person,
     Source,
     SourceCreate,
     SourceType,
@@ -91,8 +92,11 @@ class IngestionPipeline:
         # 4. Run AI extraction on the main page
         ai_records: list[ExtractionRecord] = []
         ai_relevant_links: list[dict] = []
+        ai_summary: str | None = None
+        ai_organizing_committee: list[Person] = []
+        ai_scientific_committee: list[Person] = []
         if AI_EXTRACTION_ENABLED:
-            ai_records, ai_relevant_links = await ai_extract_fields(
+            ai_records, ai_relevant_links, ai_summary, ai_organizing_committee, ai_scientific_committee = await ai_extract_fields(
                 text=text,
                 page_url=url,
                 source_id=placeholder_source_id,
@@ -110,13 +114,17 @@ class IngestionPipeline:
 
                 # Run AI extraction on each linked page and merge results
                 for linked in linked_pages:
-                    page_records, _ = await ai_extract_fields(
+                    page_records, _, _, page_org, page_sci = await ai_extract_fields(
                         text=linked["text"],
                         page_url=linked["url"],
                         source_id=placeholder_source_id,
                         api_key=ANTHROPIC_API_KEY,
                     )
                     ai_records.extend(page_records)
+                    if page_org:
+                        ai_organizing_committee.extend(page_org)
+                    if page_sci:
+                        ai_scientific_committee.extend(page_sci)
 
         # 6. Merge records: AI records take priority (higher confidence),
         #    but keep heuristic records for fields AI didn't find
@@ -152,6 +160,9 @@ class IngestionPipeline:
                     start_date=self._best_value(records, "start_date"),
                     end_date=self._best_value(records, "end_date"),
                     cfp_url=self._best_value(records, "cfp_url"),
+                    ai_summary=ai_summary,
+                    organizing_committee=ai_organizing_committee,
+                    scientific_committee=ai_scientific_committee,
                 )
             )
             conference_id = conf.id
@@ -192,12 +203,19 @@ class IngestionPipeline:
                 update_fields["is_online"] = True
             if self._best_value(records, "is_hybrid") == "true":
                 update_fields["is_hybrid"] = True
+            # Update AI summary and committees if extracted
+            if ai_summary:
+                update_fields["ai_summary"] = ai_summary
+            if ai_organizing_committee:
+                update_fields["organizing_committee"] = ai_organizing_committee
+            if ai_scientific_committee:
+                update_fields["scientific_committee"] = ai_scientific_committee
             if update_fields:
                 self._conferences.update(
                     conference_id, ConferenceUpdate(**update_fields)
                 )
 
-        # 8. Create important dates from extraction records
+        # 8. Upsert important dates from extraction records (prevents duplicates)
         for rec in records:
             if rec.field_name.startswith("important_date:"):
                 date_type_str = rec.field_name.split(":", 1)[1]
@@ -205,7 +223,7 @@ class IngestionPipeline:
                     date_type = ImportantDateType(date_type_str)
                 except ValueError:
                     date_type = ImportantDateType.OTHER
-                self._dates.create(
+                self._dates.upsert(
                     conference_id,
                     ImportantDateCreate(
                         type=date_type,

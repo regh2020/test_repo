@@ -13,24 +13,26 @@ import { useAddDate } from "./useConferences";
 
 const IMPORTANT_DATE_TYPES = [
   { value: "submission_deadline", label: "Submission Deadline" },
-  { value: "notification", label: "Notification" },
-  { value: "camera_ready", label: "Camera Ready" },
+  { value: "abstract_submission_deadline", label: "Abstract Submission Deadline" },
+  { value: "notification_date", label: "Notification" },
+  { value: "camera_ready_deadline", label: "Camera Ready Deadline" },
+  { value: "conference_start_date", label: "Conference Start" },
+  { value: "conference_end_date", label: "Conference End" },
   { value: "workshop_deadline", label: "Workshop Deadline" },
-  { value: "early_registration", label: "Early Registration" },
-  { value: "conference_start", label: "Conference Start" },
-  { value: "conference_end", label: "Conference End" },
+  { value: "registration_deadline", label: "Registration Deadline" },
   { value: "other", label: "Other" },
 ] as const;
 
 const schema = z.object({
   type: z.enum([
     "submission_deadline",
-    "notification",
-    "camera_ready",
+    "abstract_submission_deadline",
+    "notification_date",
+    "camera_ready_deadline",
+    "conference_start_date",
+    "conference_end_date",
     "workshop_deadline",
-    "early_registration",
-    "conference_start",
-    "conference_end",
+    "registration_deadline",
     "other",
   ]),
   date_time: z.string().min(1, "Date is required"),

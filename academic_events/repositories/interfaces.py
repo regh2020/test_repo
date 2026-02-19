@@ -58,6 +58,9 @@ class ImportantDateRepository(abc.ABC):
     def create(self, conference_id: str, data: ImportantDateCreate) -> ImportantDate: ...
 
     @abc.abstractmethod
+    def upsert(self, conference_id: str, data: ImportantDateCreate) -> ImportantDate: ...
+
+    @abc.abstractmethod
     def get(self, date_id: str) -> ImportantDate | None: ...
 
     @abc.abstractmethod
