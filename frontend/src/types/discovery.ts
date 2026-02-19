@@ -21,3 +21,14 @@ export interface DiscoveryRun {
   finished_at: string | null;
   candidates: DiscoveryCandidate[];
 }
+
+export interface PendingDiscovery {
+  id: string;
+  url: string;
+  title: string | null;
+  snippet: string | null;
+  score: number;
+  source_type: string;
+  created_at: string;
+  status: "pending" | "importing" | "imported" | "failed";
+}

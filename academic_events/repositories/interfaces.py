@@ -40,6 +40,8 @@ class ConferenceRepository(abc.ABC):
         status: str | None = None,
         start_after: str | None = None,
         start_before: str | None = None,
+        sort_by: str | None = None,
+        sort_order: str = "asc",
         limit: int = 100,
         offset: int = 0,
     ) -> list[Conference]: ...
@@ -56,7 +58,16 @@ class ImportantDateRepository(abc.ABC):
     def create(self, conference_id: str, data: ImportantDateCreate) -> ImportantDate: ...
 
     @abc.abstractmethod
+    def get(self, date_id: str) -> ImportantDate | None: ...
+
+    @abc.abstractmethod
     def list_for_conference(self, conference_id: str) -> list[ImportantDate]: ...
+
+    @abc.abstractmethod
+    def update_display_globally(self, date_id: str, display_globally: bool) -> ImportantDate | None: ...
+
+    @abc.abstractmethod
+    def list_global(self) -> list[ImportantDate]: ...
 
     @abc.abstractmethod
     def delete(self, date_id: str) -> bool: ...

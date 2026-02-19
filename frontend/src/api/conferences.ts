@@ -5,8 +5,10 @@ import type {
   ConferenceFilters,
   ConferenceUpdate,
   ExtractionRecord,
+  GlobalImportantDate,
   ImportantDate,
   ImportantDateCreate,
+  PendingDiscovery,
   Source,
   SourceCreate,
 } from "@/types";
@@ -24,6 +26,8 @@ export const conferencesApi = {
     if (filters.status) params.status = filters.status;
     if (filters.start_after) params.start_after = filters.start_after;
     if (filters.start_before) params.start_before = filters.start_before;
+    if (filters.sort_by) params.sort_by = filters.sort_by;
+    if (filters.sort_order) params.sort_order = filters.sort_order;
     params.limit = filters.limit ?? 100;
     params.offset = filters.offset ?? 0;
 
@@ -71,6 +75,18 @@ export const conferencesApi = {
     return http.delete(`/conferences/dates/${dateId}`).then(() => undefined);
   },
 
+  updateDateDisplayGlobally(dateId: string, display_globally: boolean): Promise<ImportantDate> {
+    return http
+      .patch<ImportantDate>(`/conferences/dates/${dateId}/display-globally`, { display_globally })
+      .then((r) => r.data);
+  },
+
+  listGlobalImportantDates(): Promise<GlobalImportantDate[]> {
+    return http
+      .get<GlobalImportantDate[]>("/important-dates")
+      .then((r) => r.data);
+  },
+
   // ─── Sources ────────────────────────────────────────────────────────────────
 
   listSources(conferenceId: string): Promise<Source[]> {
@@ -91,5 +107,25 @@ export const conferencesApi = {
     return http
       .get<ExtractionRecord[]>(`/sources/${sourceId}/extractions`)
       .then((r) => r.data);
+  },
+};
+
+// ─── Pending Discoveries ──────────────────────────────────────────────────────
+
+export const pendingDiscoveriesApi = {
+  list(): Promise<PendingDiscovery[]> {
+    return http.get<PendingDiscovery[]>("/pending-discoveries").then((r) => r.data);
+  },
+
+  add(data: { url: string; title?: string | null; snippet?: string | null; score?: number; source_type?: string }): Promise<PendingDiscovery> {
+    return http.post<PendingDiscovery>("/pending-discoveries", data).then((r) => r.data);
+  },
+
+  delete(id: string): Promise<void> {
+    return http.delete(`/pending-discoveries/${id}`).then(() => undefined);
+  },
+
+  import(id: string): Promise<{ conference_id: string | null; source_id: string; extraction_count: number; error: string | null }> {
+    return http.post(`/pending-discoveries/${id}/import`).then((r) => r.data);
   },
 };

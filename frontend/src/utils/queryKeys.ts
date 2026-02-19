@@ -27,4 +27,14 @@ export const qk = {
   refresh: {
     all: ["refresh"] as const,
   },
+
+  // Pending Discoveries
+  pendingDiscoveries: {
+    all: ["pending-discoveries"] as const,
+  },
+
+  // Global Important Dates
+  globalDates: {
+    all: ["global-important-dates"] as const,
+  },
 };

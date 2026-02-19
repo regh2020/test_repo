@@ -9,6 +9,13 @@ import type {
   SourceCreate,
 } from "@/types";
 
+export function useGlobalImportantDates() {
+  return useQuery({
+    queryKey: qk.globalDates.all,
+    queryFn: () => conferencesApi.listGlobalImportantDates(),
+  });
+}
+
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
 export function useConferences(filters: ConferenceFilters = {}) {
@@ -93,6 +100,19 @@ export function useDeleteDate(conferenceId: string) {
     mutationFn: (dateId: string) => conferencesApi.deleteDate(dateId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.conferences.dates(conferenceId) });
+      qc.invalidateQueries({ queryKey: qk.globalDates.all });
+    },
+  });
+}
+
+export function useUpdateDateDisplayGlobally(conferenceId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ dateId, display_globally }: { dateId: string; display_globally: boolean }) =>
+      conferencesApi.updateDateDisplayGlobally(dateId, display_globally),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.conferences.dates(conferenceId) });
+      qc.invalidateQueries({ queryKey: qk.globalDates.all });
     },
   });
 }

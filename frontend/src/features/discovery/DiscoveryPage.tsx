@@ -5,8 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   Search,
-  PlusCircle,
-  Trash2,
   ExternalLink,
   Download,
   XCircle,
@@ -24,7 +22,7 @@ import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { ROUTES } from "@/router/routes";
 import { truncate, displayUrl } from "@/utils/format";
-import { useDiscover, useImportCandidate } from "./useDiscovery";
+import { useDiscover, useSaveToPending } from "./useDiscovery";
 import type { DiscoveryCandidate } from "@/types";
 
 const schema = z.object({
@@ -72,7 +70,7 @@ export function DiscoveryPage() {
     <div>
       <PageHeader
         title="Discover Conferences"
-        description="Search the web for new conference announcements and import them."
+        description="Search the web for new conference announcements. Candidates are saved to Pending Discoveries for review before import."
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -169,10 +167,15 @@ export function DiscoveryPage() {
 
           {discover.isSuccess && candidates.length > 0 && (
             <div className="space-y-3">
-              <p className="text-sm text-slate-500">
-                {candidates.length} candidate
-                {candidates.length !== 1 ? "s" : ""} found
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-slate-500">
+                  {candidates.length} candidate
+                  {candidates.length !== 1 ? "s" : ""} found
+                </p>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to={ROUTES.pendingDiscoveries}>View Pending →</Link>
+                </Button>
+              </div>
               {candidates.map((candidate, i) => (
                 <CandidateCard key={`${candidate.url}-${i}`} candidate={candidate} />
               ))}
@@ -186,22 +189,19 @@ export function DiscoveryPage() {
 
 // ─── Candidate card ───────────────────────────────────────────────────────────
 
-type ImportState = "idle" | "importing" | "done" | "error";
+type SaveState = "idle" | "saving" | "saved" | "error";
 
 function CandidateCard({ candidate }: { candidate: DiscoveryCandidate }) {
-  const [importState, setImportState] = useState<ImportState>("idle");
-  const [importedId, setImportedId] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const saveToPending = useSaveToPending();
 
-  const importCandidate = useImportCandidate();
-
-  const handleImport = async () => {
-    setImportState("importing");
+  const handleSave = async () => {
+    setSaveState("saving");
     try {
-      const result = await importCandidate.mutateAsync(candidate.url);
-      setImportedId(result.conference_id);
-      setImportState("done");
+      await saveToPending.mutateAsync(candidate);
+      setSaveState("saved");
     } catch {
-      setImportState("error");
+      setSaveState("error");
     }
   };
 
@@ -244,42 +244,38 @@ function CandidateCard({ candidate }: { candidate: DiscoveryCandidate }) {
 
         {/* Actions */}
         <div className="flex flex-col gap-2 shrink-0">
-          {importState === "idle" && (
-            <Button size="sm" onClick={handleImport}>
+          {saveState === "idle" && (
+            <Button size="sm" onClick={handleSave}>
               <Download className="h-3.5 w-3.5" />
-              Import
+              Save to Pending
             </Button>
           )}
 
-          {importState === "importing" && (
+          {saveState === "saving" && (
             <Button size="sm" loading>
-              Importing
+              Saving…
             </Button>
           )}
 
-          {importState === "done" && (
+          {saveState === "saved" && (
             <div className="flex flex-col gap-1 items-end">
               <div className="flex items-center gap-1 text-emerald-600 text-xs">
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                Imported
+                Saved to Pending
               </div>
-              {importedId && (
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to={ROUTES.conferenceDetail(importedId)}>
-                    View <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </Button>
-              )}
+              <Button variant="ghost" size="sm" asChild>
+                <Link to={ROUTES.pendingDiscoveries}>View Pending →</Link>
+              </Button>
             </div>
           )}
 
-          {importState === "error" && (
+          {saveState === "error" && (
             <div className="flex flex-col gap-1 items-end">
               <div className="flex items-center gap-1 text-red-500 text-xs">
                 <XCircle className="h-3.5 w-3.5" />
                 Failed
               </div>
-              <Button size="sm" variant="outline" onClick={handleImport}>
+              <Button size="sm" variant="outline" onClick={handleSave}>
                 Retry
               </Button>
             </div>
@@ -287,23 +283,5 @@ function CandidateCard({ candidate }: { candidate: DiscoveryCandidate }) {
         </div>
       </div>
     </div>
-  );
-}
-
-// Fix missing import
-function ArrowRight({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M5 12h14M12 5l7 7-7 7" />
-    </svg>
   );
 }

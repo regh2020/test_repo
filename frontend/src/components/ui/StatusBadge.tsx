@@ -11,10 +11,10 @@ export function StatusBadge({ status }: StatusBadgeProps) {
     ConferenceStatus,
     React.ComponentProps<typeof Badge>["variant"]
   > = {
-    upcoming: "success",
+    active: "success",
     past: "secondary",
     cancelled: "destructive",
-    unknown: "outline",
+    postponed: "outline",
   };
 
   return (

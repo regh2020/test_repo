@@ -28,3 +28,14 @@ class DiscoveryRun(BaseModel):
     started_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     finished_at: str | None = None
     candidates: list[DiscoveryCandidate] = Field(default_factory=list)
+
+
+class PendingDiscovery(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    url: str
+    title: str | None = None
+    snippet: str | None = None
+    score: float = 0.0
+    source_type: str = "web"
+    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    status: str = "pending"  # pending | imported | failed

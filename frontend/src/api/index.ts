@@ -1,4 +1,4 @@
-export { conferencesApi } from "./conferences";
+export { conferencesApi, pendingDiscoveriesApi } from "./conferences";
 export { discoveryApi } from "./discovery";
 export { ingestionApi } from "./ingestion";
 export { refreshApi } from "./refresh";

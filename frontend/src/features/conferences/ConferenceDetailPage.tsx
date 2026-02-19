@@ -33,6 +33,7 @@ import {
   useConferenceSources,
   useDeleteConference,
   useDeleteDate,
+  useUpdateDateDisplayGlobally,
 } from "./useConferences";
 import { AddSourceDialog } from "./AddSourceDialog";
 import { AddDateDialog } from "./AddDateDialog";
@@ -297,9 +298,15 @@ function ImportantDateTable({
     date_time: string;
     timezone: string | null;
     note: string | null;
+    display_globally: boolean;
   }>;
 }) {
   const deleteDate = useDeleteDate(conferenceId);
+  const updateDisplayGlobally = useUpdateDateDisplayGlobally(conferenceId);
+
+  // Submission deadlines and conference starts are always globally displayed
+  const isAutoGlobal = (type: string) =>
+    type === "submission_deadline" || type === "conference_start";
 
   return (
     <table className="w-full text-sm">
@@ -313,6 +320,9 @@ function ImportantDateTable({
           </th>
           <th className="pb-2 text-left text-xs font-medium text-slate-500">
             Note
+          </th>
+          <th className="pb-2 text-left text-xs font-medium text-slate-500">
+            Global
           </th>
           <th />
         </tr>
@@ -330,6 +340,26 @@ function ImportantDateTable({
             </td>
             <td className="py-2 pr-4 text-slate-400 text-xs">
               {d.note ?? ""}
+            </td>
+            <td className="py-2 pr-4">
+              {isAutoGlobal(d.type) ? (
+                <span className="text-xs text-slate-400 italic">Always</span>
+              ) : (
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="rounded"
+                    checked={d.display_globally}
+                    onChange={(e) =>
+                      updateDisplayGlobally.mutate({
+                        dateId: d.id,
+                        display_globally: e.target.checked,
+                      })
+                    }
+                  />
+                  <span className="text-xs text-slate-500">Show globally</span>
+                </label>
+              )}
             </td>
             <td className="py-2">
               <button

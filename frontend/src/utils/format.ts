@@ -16,10 +16,10 @@ export function formatImportantDateType(type: ImportantDateType): string {
 
 export function formatStatus(status: ConferenceStatus): string {
   const labels: Record<ConferenceStatus, string> = {
-    upcoming: "Upcoming",
+    active: "Active",
     past: "Past",
     cancelled: "Cancelled",
-    unknown: "Unknown",
+    postponed: "Postponed",
   };
   return labels[status] ?? status;
 }

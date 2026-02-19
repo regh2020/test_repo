@@ -1,10 +1,10 @@
 // ─── Enumerations ─────────────────────────────────────────────────────────────
 
 export type ConferenceStatus =
-  | "upcoming"
+  | "active"
   | "past"
   | "cancelled"
-  | "unknown";
+  | "postponed";
 
 export type ImportantDateType =
   | "submission_deadline"
@@ -40,6 +40,7 @@ export interface Conference {
   status: ConferenceStatus;
   created_at: string;
   updated_at: string;
+  submission_deadline: string | null;
 }
 
 export interface ImportantDate {
@@ -49,6 +50,7 @@ export interface ImportantDate {
   date_time: string;
   timezone: string | null;
   note: string | null;
+  display_globally: boolean;
 }
 
 export interface Source {
@@ -100,6 +102,7 @@ export interface ImportantDateCreate {
   date_time: string;
   timezone?: string | null;
   note?: string | null;
+  display_globally?: boolean;
 }
 
 export interface SourceCreate {
@@ -120,6 +123,13 @@ export interface ConferenceFilters {
   status?: ConferenceStatus;
   start_after?: string;
   start_before?: string;
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
   limit?: number;
   offset?: number;
+}
+
+export interface GlobalImportantDate {
+  date: ImportantDate;
+  conference: Conference;
 }

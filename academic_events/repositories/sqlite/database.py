@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS conferences (
     end_date TEXT,
     cfp_url TEXT,
     website_url TEXT,
-    status TEXT DEFAULT 'unknown',
+    status TEXT DEFAULT 'active',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -33,7 +33,19 @@ CREATE TABLE IF NOT EXISTS important_dates (
     date_time TEXT NOT NULL,
     timezone TEXT,
     note TEXT,
+    display_globally INTEGER DEFAULT 0,
     FOREIGN KEY (conference_id) REFERENCES conferences(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS pending_discoveries (
+    id TEXT PRIMARY KEY,
+    url TEXT NOT NULL,
+    title TEXT,
+    snippet TEXT,
+    score REAL DEFAULT 0.0,
+    source_type TEXT DEFAULT 'web',
+    created_at TEXT NOT NULL,
+    status TEXT DEFAULT 'pending'
 );
 
 CREATE TABLE IF NOT EXISTS sources (
@@ -92,7 +104,26 @@ class SQLiteDatabase:
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute("PRAGMA foreign_keys=ON")
             self._conn.executescript(_SCHEMA)
+            self._run_migrations()
         return self._conn
+
+    def _run_migrations(self) -> None:
+        """Apply incremental schema migrations for existing databases."""
+        assert self._conn is not None
+        # Add display_globally column if missing
+        cols = {
+            row[1]
+            for row in self._conn.execute("PRAGMA table_info(important_dates)")
+        }
+        if "display_globally" not in cols:
+            self._conn.execute(
+                "ALTER TABLE important_dates ADD COLUMN display_globally INTEGER DEFAULT 0"
+            )
+        # Migrate 'unknown' and 'upcoming' statuses
+        self._conn.execute(
+            "UPDATE conferences SET status = 'active' WHERE status IN ('unknown', 'upcoming')"
+        )
+        self._conn.commit()
 
     @property
     def conn(self) -> sqlite3.Connection:
