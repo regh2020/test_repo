@@ -6,6 +6,7 @@ import logging
 import sys
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from academic_events.api.conferences import router as conferences_router
 from academic_events.api.discovery import router as discovery_router
@@ -24,6 +25,17 @@ app = FastAPI(
     title="Academic Events Registry",
     description="Backend API for managing academic conferences and events",
     version="0.1.0",
+)
+
+# Allow the Vite dev server (and any localhost port) to call the API without
+# CORS errors. Restrict origins in production by setting CORS_ORIGINS in the
+# environment to a comma-separated list of allowed URLs.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(health_router)
