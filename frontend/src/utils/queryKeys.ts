@@ -15,6 +15,7 @@ export const qk = {
     detail: (id: string) => [...qk.conferences.details(), id] as const,
     dates: (id: string) => [...qk.conferences.detail(id), "dates"] as const,
     sources: (id: string) => [...qk.conferences.detail(id), "sources"] as const,
+    timeline: (year: number) => [...qk.conferences.all, "timeline", year] as const,
   },
 
   // Discovery
