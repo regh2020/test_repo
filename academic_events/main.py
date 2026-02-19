@@ -11,7 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from academic_events.api.conferences import router as conferences_router
 from academic_events.api.discovery import router as discovery_router
 from academic_events.api.health import router as health_router
+from academic_events.api.important_dates import router as important_dates_router
 from academic_events.api.ingestion import router as ingestion_router
+from academic_events.api.pending_discoveries import router as pending_discoveries_router
 from academic_events.api.refresh import router as refresh_router
 
 # Structured logging
@@ -40,6 +42,8 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(conferences_router)
+app.include_router(important_dates_router)
 app.include_router(ingestion_router)
 app.include_router(discovery_router)
+app.include_router(pending_discoveries_router)
 app.include_router(refresh_router)

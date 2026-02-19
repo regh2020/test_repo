@@ -12,7 +12,9 @@ export const ROUTES = {
   conferenceNew: "/conferences/new",
   conferenceDetail: (id = ":id") => `/conferences/${id}`,
   conferenceEdit: (id = ":id") => `/conferences/${id}/edit`,
+  importantDates: "/important-dates",
   ingestion: "/ingest",
   discovery: "/discover",
+  pendingDiscoveries: "/pending-discoveries",
   refresh: "/refresh",
 } as const;

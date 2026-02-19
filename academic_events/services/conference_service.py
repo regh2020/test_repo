@@ -73,6 +73,12 @@ class ConferenceService:
     def delete_date(self, date_id: str) -> bool:
         return self._dates.delete(date_id)
 
+    def update_date_display_globally(self, date_id: str, display_globally: bool) -> ImportantDate | None:
+        return self._dates.update_display_globally(date_id, display_globally)
+
+    def list_global_dates(self) -> list[ImportantDate]:
+        return self._dates.list_global()
+
     # --- Sources ---
 
     def add_source(self, conference_id: str, data: SourceCreate) -> Source | None:

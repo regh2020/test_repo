@@ -4,8 +4,10 @@ import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { ConferenceListPage } from "@/features/conferences/ConferenceListPage";
 import { ConferenceDetailPage } from "@/features/conferences/ConferenceDetailPage";
 import { ConferenceFormPage } from "@/features/conferences/ConferenceFormPage";
+import { ImportantDatesPage } from "@/features/important-dates/ImportantDatesPage";
 import { IngestionPage } from "@/features/ingestion/IngestionPage";
 import { DiscoveryPage } from "@/features/discovery/DiscoveryPage";
+import { PendingDiscoveriesPage } from "@/features/discovery/PendingDiscoveriesPage";
 import { RefreshPage } from "@/features/refresh/RefreshPage";
 import { NotFoundPage } from "./NotFoundPage";
 import { ErrorBoundaryPage } from "./ErrorBoundaryPage";
@@ -26,8 +28,10 @@ export const router = createBrowserRouter([
       { path: "conferences/new", element: <ConferenceFormPage mode="create" /> },
       { path: "conferences/:id", element: <ConferenceDetailPage /> },
       { path: "conferences/:id/edit", element: <ConferenceFormPage mode="edit" /> },
+      { path: "important-dates", element: <ImportantDatesPage /> },
       { path: "ingest", element: <IngestionPage /> },
       { path: "discover", element: <DiscoveryPage /> },
+      { path: "pending-discoveries", element: <PendingDiscoveriesPage /> },
       { path: "refresh", element: <RefreshPage /> },
       { path: "404", element: <NotFoundPage /> },
       { path: "*", element: <Navigate to="/404" replace /> },

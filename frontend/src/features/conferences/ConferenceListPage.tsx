@@ -6,6 +6,9 @@ import {
   SlidersHorizontal,
   ListOrdered,
   LayoutGrid,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -16,17 +19,25 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Badge } from "@/components/ui/Badge";
 import { ROUTES } from "@/router/routes";
-import { formatDateRange, timeAgo } from "@/utils/date";
+import { formatDateRange, formatDate, timeAgo } from "@/utils/date";
 import { useConferences } from "./useConferences";
 import type { Conference, ConferenceFilters, ConferenceStatus } from "@/types";
 
 const STATUS_OPTIONS: Array<{ value: ConferenceStatus | ""; label: string }> = [
   { value: "", label: "All statuses" },
-  { value: "upcoming", label: "Upcoming" },
+  { value: "active", label: "Active" },
   { value: "past", label: "Past" },
   { value: "cancelled", label: "Cancelled" },
-  { value: "unknown", label: "Unknown" },
+  { value: "postponed", label: "Postponed" },
 ];
+
+type SortColumn =
+  | "name"
+  | "start_date"
+  | "location"
+  | "submission_deadline"
+  | "status"
+  | "updated_at";
 
 type ViewMode = "table" | "cards";
 
@@ -38,6 +49,8 @@ export function ConferenceListPage() {
   const nameSearch = searchParams.get("name") ?? "";
   const statusFilter = (searchParams.get("status") ?? "") as ConferenceStatus | "";
   const topicFilter = searchParams.get("topic") ?? "";
+  const sortBy = (searchParams.get("sort_by") ?? "start_date") as SortColumn;
+  const sortOrder = (searchParams.get("sort_order") ?? "asc") as "asc" | "desc";
 
   const [page, setPage] = useState(0);
   const pageSize = 25;
@@ -46,6 +59,8 @@ export function ConferenceListPage() {
     ...(nameSearch ? { name: nameSearch } : {}),
     ...(statusFilter ? { status: statusFilter } : {}),
     ...(topicFilter ? { topic: topicFilter } : {}),
+    sort_by: sortBy,
+    sort_order: sortOrder,
     limit: pageSize,
     offset: page * pageSize,
   };
@@ -59,6 +74,25 @@ export function ConferenceListPage() {
         const next = new URLSearchParams(prev);
         if (value) next.set(key, value);
         else next.delete(key);
+        return next;
+      });
+    },
+    [setSearchParams]
+  );
+
+  const handleSort = useCallback(
+    (column: SortColumn) => {
+      setPage(0);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        const currentCol = prev.get("sort_by") ?? "start_date";
+        const currentOrder = prev.get("sort_order") ?? "asc";
+        if (currentCol === column) {
+          next.set("sort_order", currentOrder === "asc" ? "desc" : "asc");
+        } else {
+          next.set("sort_by", column);
+          next.set("sort_order", "asc");
+        }
         return next;
       });
     },
@@ -144,7 +178,12 @@ export function ConferenceListPage() {
       )}
 
       {data && data.length > 0 && viewMode === "table" && (
-        <ConferenceTable conferences={data} />
+        <ConferenceTable
+          conferences={data}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
+        />
       )}
 
       {data && data.length > 0 && viewMode === "cards" && (
@@ -183,32 +222,69 @@ export function ConferenceListPage() {
   );
 }
 
+// ─── Sortable column header ────────────────────────────────────────────────────
+
+function SortableHeader({
+  column,
+  label,
+  sortBy,
+  sortOrder,
+  onSort,
+}: {
+  column: SortColumn;
+  label: string;
+  sortBy: SortColumn;
+  sortOrder: "asc" | "desc";
+  onSort: (col: SortColumn) => void;
+}) {
+  const active = sortBy === column;
+  return (
+    <th className="px-4 py-2.5 text-left font-medium text-slate-600">
+      <button
+        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+        onClick={() => onSort(column)}
+        aria-label={`Sort by ${label}`}
+      >
+        {label}
+        {active ? (
+          sortOrder === "asc" ? (
+            <ChevronUp className="h-3.5 w-3.5 text-brand-500" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5 text-brand-500" />
+          )
+        ) : (
+          <ChevronsUpDown className="h-3.5 w-3.5 text-slate-300" />
+        )}
+      </button>
+    </th>
+  );
+}
+
 // ─── Table view ───────────────────────────────────────────────────────────────
 
-function ConferenceTable({ conferences }: { conferences: Conference[] }) {
+function ConferenceTable({
+  conferences,
+  sortBy,
+  sortOrder,
+  onSort,
+}: {
+  conferences: Conference[];
+  sortBy: SortColumn;
+  sortOrder: "asc" | "desc";
+  onSort: (col: SortColumn) => void;
+}) {
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50">
-            <th className="px-4 py-2.5 text-left font-medium text-slate-600">
-              Conference
-            </th>
-            <th className="px-4 py-2.5 text-left font-medium text-slate-600">
-              Dates
-            </th>
-            <th className="px-4 py-2.5 text-left font-medium text-slate-600">
-              Location
-            </th>
-            <th className="px-4 py-2.5 text-left font-medium text-slate-600">
-              Topics
-            </th>
-            <th className="px-4 py-2.5 text-left font-medium text-slate-600">
-              Status
-            </th>
-            <th className="px-4 py-2.5 text-left font-medium text-slate-600">
-              Updated
-            </th>
+            <SortableHeader column="name" label="Conference" sortBy={sortBy} sortOrder={sortOrder} onSort={onSort} />
+            <SortableHeader column="start_date" label="Dates" sortBy={sortBy} sortOrder={sortOrder} onSort={onSort} />
+            <SortableHeader column="location" label="Location" sortBy={sortBy} sortOrder={sortOrder} onSort={onSort} />
+            <th className="px-4 py-2.5 text-left font-medium text-slate-600">Topics</th>
+            <SortableHeader column="submission_deadline" label="Submission Deadline" sortBy={sortBy} sortOrder={sortOrder} onSort={onSort} />
+            <SortableHeader column="status" label="Status" sortBy={sortBy} sortOrder={sortOrder} onSort={onSort} />
+            <SortableHeader column="updated_at" label="Updated" sortBy={sortBy} sortOrder={sortOrder} onSort={onSort} />
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -249,6 +325,9 @@ function ConferenceTable({ conferences }: { conferences: Conference[] }) {
                     </Badge>
                   )}
                 </div>
+              </td>
+              <td className="px-4 py-3 text-slate-500 whitespace-nowrap font-mono text-xs">
+                {conf.submission_deadline ? formatDate(conf.submission_deadline) : "—"}
               </td>
               <td className="px-4 py-3">
                 <StatusBadge status={conf.status} />
@@ -293,6 +372,12 @@ function ConferenceCardGrid({ conferences }: { conferences: Conference[] }) {
             {formatDateRange(conf.start_date, conf.end_date)}
             {conf.city && ` · ${conf.city}`}
           </p>
+
+          {conf.submission_deadline && (
+            <p className="text-xs text-amber-600 mb-2">
+              Deadline: {conf.submission_deadline.slice(0, 10)}
+            </p>
+          )}
 
           <div className="flex flex-wrap gap-1">
             {conf.topics.slice(0, 4).map((t) => (

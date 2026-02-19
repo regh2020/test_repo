@@ -4,6 +4,7 @@ from academic_events.repositories.sqlite.source_repo import SQLiteSourceReposito
 from academic_events.repositories.sqlite.important_date_repo import SQLiteImportantDateRepository
 from academic_events.repositories.sqlite.extraction_repo import SQLiteExtractionRepository
 from academic_events.repositories.sqlite.discovery_repo import SQLiteDiscoveryRepository
+from academic_events.repositories.sqlite.pending_discovery_repo import SQLitePendingDiscoveryRepository
 
 __all__ = [
     "SQLiteDatabase",
@@ -12,4 +13,5 @@ __all__ = [
     "SQLiteImportantDateRepository",
     "SQLiteExtractionRepository",
     "SQLiteDiscoveryRepository",
+    "SQLitePendingDiscoveryRepository",
 ]

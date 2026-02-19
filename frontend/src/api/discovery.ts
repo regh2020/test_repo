@@ -1,14 +1,15 @@
 import { http } from "./client";
-import type { DiscoveryQuery, DiscoveryRun, IngestResponse } from "@/types";
+import type { DiscoveryQuery, DiscoveryRun, PendingDiscovery } from "@/types";
 
 export const discoveryApi = {
   discover(query: DiscoveryQuery): Promise<DiscoveryRun> {
     return http.post<DiscoveryRun>("/discover", query).then((r) => r.data);
   },
 
-  importCandidate(candidateUrl: string): Promise<IngestResponse> {
+  /** Save a discovered candidate URL to the Pending Discoveries list (no AI extraction). */
+  saveToPending(candidate: { url: string; title?: string | null; snippet?: string | null; score?: number; source_type?: string }): Promise<PendingDiscovery> {
     return http
-      .post<IngestResponse>("/import", { candidate_url: candidateUrl })
+      .post<PendingDiscovery>("/import", candidate)
       .then((r) => r.data);
   },
 };

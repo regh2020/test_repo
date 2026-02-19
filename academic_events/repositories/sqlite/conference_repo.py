@@ -52,7 +52,11 @@ class SQLiteConferenceRepository(ConferenceRepository):
         self._db.conn.commit()
         return conf
 
-    def _row_to_conference(self, row) -> Conference:
+    def _row_to_conference(self, row, *, submission_deadline: str | None = None) -> Conference:
+        keys = row.keys() if hasattr(row, "keys") else []
+        sd = submission_deadline
+        if sd is None and "submission_deadline" in keys:
+            sd = row["submission_deadline"]
         return Conference(
             id=row["id"],
             name=row["name"],
@@ -68,9 +72,10 @@ class SQLiteConferenceRepository(ConferenceRepository):
             end_date=row["end_date"],
             cfp_url=row["cfp_url"],
             website_url=row["website_url"],
-            status=ConferenceStatus(row["status"]) if row["status"] else ConferenceStatus.UNKNOWN,
+            status=ConferenceStatus(row["status"]) if row["status"] else ConferenceStatus.ACTIVE,
             created_at=row["created_at"],
             updated_at=row["updated_at"],
+            submission_deadline=sd,
         )
 
     def get(self, conference_id: str) -> Conference | None:
@@ -79,6 +84,23 @@ class SQLiteConferenceRepository(ConferenceRepository):
         )
         row = cur.fetchone()
         return self._row_to_conference(row) if row else None
+
+    # Subquery to get the earliest upcoming submission deadline for a conference
+    _SUBMISSION_DEADLINE_SUBQUERY = (
+        "(SELECT MIN(date_time) FROM important_dates "
+        " WHERE conference_id = c.id AND type = 'submission_deadline'"
+        " AND date_time >= datetime('now'))"
+    )
+
+    # Allowed column names for sorting (whitelist to prevent SQL injection)
+    _SORT_COLUMNS: dict[str, str] = {
+        "name": "c.name",
+        "acronym": "c.acronym",
+        "location": "c.city",
+        "start_date": "c.start_date",
+        "status": "c.status",
+        "updated_at": "c.updated_at",
+    }
 
     def list_all(
         self,
@@ -91,6 +113,8 @@ class SQLiteConferenceRepository(ConferenceRepository):
         status: str | None = None,
         start_after: str | None = None,
         start_before: str | None = None,
+        sort_by: str | None = None,
+        sort_order: str = "asc",
         limit: int = 100,
         offset: int = 0,
     ) -> list[Conference]:
@@ -98,32 +122,44 @@ class SQLiteConferenceRepository(ConferenceRepository):
         params: list = []
 
         if name:
-            clauses.append("name LIKE ?")
+            clauses.append("c.name LIKE ?")
             params.append(f"%{name}%")
         if acronym:
-            clauses.append("acronym LIKE ?")
+            clauses.append("c.acronym LIKE ?")
             params.append(f"%{acronym}%")
         if topic:
-            clauses.append("topics LIKE ?")
+            clauses.append("c.topics LIKE ?")
             params.append(f"%{topic}%")
         if city:
-            clauses.append("city LIKE ?")
+            clauses.append("c.city LIKE ?")
             params.append(f"%{city}%")
         if country:
-            clauses.append("country LIKE ?")
+            clauses.append("c.country LIKE ?")
             params.append(f"%{country}%")
         if status:
-            clauses.append("status = ?")
+            clauses.append("c.status = ?")
             params.append(status)
         if start_after:
-            clauses.append("start_date >= ?")
+            clauses.append("c.start_date >= ?")
             params.append(start_after)
         if start_before:
-            clauses.append("start_date <= ?")
+            clauses.append("c.start_date <= ?")
             params.append(start_before)
 
         where = " AND ".join(clauses) if clauses else "1=1"
-        query = f"SELECT * FROM conferences WHERE {where} ORDER BY start_date ASC LIMIT ? OFFSET ?"
+        direction = "DESC" if sort_order.lower() == "desc" else "ASC"
+
+        if sort_by == "submission_deadline":
+            order_expr = f"{self._SUBMISSION_DEADLINE_SUBQUERY} {direction} NULLS LAST"
+        else:
+            sort_col = self._SORT_COLUMNS.get(sort_by or "", "c.start_date")
+            order_expr = f"{sort_col} {direction}"
+
+        query = (
+            f"SELECT c.*, {self._SUBMISSION_DEADLINE_SUBQUERY} AS submission_deadline "
+            f"FROM conferences c WHERE {where} "
+            f"ORDER BY {order_expr} LIMIT ? OFFSET ?"
+        )
         params.extend([limit, offset])
 
         rows = self._db.conn.execute(query, params).fetchall()

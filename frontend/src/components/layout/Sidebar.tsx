@@ -2,8 +2,10 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   ListFilter,
+  CalendarDays,
   Link2,
   Search,
+  Clock,
   RefreshCw,
   GraduationCap,
 } from "lucide-react";
@@ -30,6 +32,11 @@ const NAV_ITEMS: NavItem[] = [
     icon: ListFilter,
   },
   {
+    to: ROUTES.importantDates,
+    label: "Important Dates",
+    icon: CalendarDays,
+  },
+  {
     to: ROUTES.ingestion,
     label: "Ingest URL",
     icon: Link2,
@@ -38,6 +45,11 @@ const NAV_ITEMS: NavItem[] = [
     to: ROUTES.discovery,
     label: "Discover",
     icon: Search,
+  },
+  {
+    to: ROUTES.pendingDiscoveries,
+    label: "Pending",
+    icon: Clock,
   },
   {
     to: ROUTES.refresh,

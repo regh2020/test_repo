@@ -37,8 +37,8 @@ const conferenceSchema = z.object({
     .optional()
     .or(z.literal("")),
   status: z
-    .enum(["upcoming", "past", "cancelled", "unknown"])
-    .default("unknown"),
+    .enum(["active", "past", "cancelled", "postponed"])
+    .default("active"),
 });
 
 type FormValues = z.infer<typeof conferenceSchema>;
@@ -64,7 +64,7 @@ export function ConferenceFormPage({ mode }: Props) {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(conferenceSchema),
-    defaultValues: { topics: [], is_online: false, is_hybrid: false, status: "unknown" },
+    defaultValues: { topics: [], is_online: false, is_hybrid: false, status: "active" },
   });
 
   const { fields: topicFields, append, remove } = useFieldArray({
@@ -185,10 +185,10 @@ export function ConferenceFormPage({ mode }: Props) {
                   {...register("status")}
                   className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm"
                 >
-                  <option value="unknown">Unknown</option>
-                  <option value="upcoming">Upcoming</option>
+                  <option value="active">Active</option>
                   <option value="past">Past</option>
                   <option value="cancelled">Cancelled</option>
+                  <option value="postponed">Postponed</option>
                 </select>
               </FormField>
 

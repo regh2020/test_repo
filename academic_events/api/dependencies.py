@@ -11,6 +11,7 @@ from academic_events.repositories.sqlite import (
     SQLiteDiscoveryRepository,
     SQLiteExtractionRepository,
     SQLiteImportantDateRepository,
+    SQLitePendingDiscoveryRepository,
     SQLiteSourceRepository,
 )
 from academic_events.services.conference_service import ConferenceService
@@ -70,6 +71,10 @@ def get_refresh_worker() -> RefreshWorker:
         dates=get_date_repo(),
         extractions=get_extraction_repo(),
     )
+
+
+def get_pending_discovery_repo() -> SQLitePendingDiscoveryRepository:
+    return SQLitePendingDiscoveryRepository(get_db())
 
 
 def get_discovery_service() -> DiscoveryService:

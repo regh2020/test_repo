@@ -8,10 +8,10 @@ from pydantic import BaseModel, Field, HttpUrl
 
 
 class ConferenceStatus(str, enum.Enum):
-    UPCOMING = "upcoming"
+    ACTIVE = "active"
     PAST = "past"
     CANCELLED = "cancelled"
-    UNKNOWN = "unknown"
+    POSTPONED = "postponed"
 
 
 class ImportantDateType(str, enum.Enum):
@@ -55,7 +55,7 @@ class ConferenceCreate(BaseModel):
     end_date: str | None = None
     cfp_url: str | None = None
     website_url: str | None = None
-    status: ConferenceStatus = ConferenceStatus.UNKNOWN
+    status: ConferenceStatus = ConferenceStatus.ACTIVE
 
 
 class ConferenceUpdate(BaseModel):
@@ -80,6 +80,7 @@ class ImportantDateCreate(BaseModel):
     date_time: str
     timezone: str | None = None
     note: str | None = None
+    display_globally: bool = False
 
 
 class SourceCreate(BaseModel):
@@ -107,9 +108,11 @@ class Conference(BaseModel):
     end_date: str | None = None
     cfp_url: str | None = None
     website_url: str | None = None
-    status: ConferenceStatus = ConferenceStatus.UNKNOWN
+    status: ConferenceStatus = ConferenceStatus.ACTIVE
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    # Computed from important_dates; populated by repository on list queries
+    submission_deadline: str | None = None
 
 
 class ImportantDate(BaseModel):
@@ -119,6 +122,7 @@ class ImportantDate(BaseModel):
     date_time: str
     timezone: str | None = None
     note: str | None = None
+    display_globally: bool = False
 
 
 class Source(BaseModel):

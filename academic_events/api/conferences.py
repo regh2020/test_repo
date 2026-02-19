@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 from academic_events.api.dependencies import get_conference_service
 from academic_events.models.conference import (
@@ -37,6 +38,8 @@ def list_conferences(
     status: str | None = None,
     start_after: str | None = None,
     start_before: str | None = None,
+    sort_by: str | None = None,
+    sort_order: str = Query(default="asc", pattern="^(asc|desc)$"),
     limit: int = Query(default=100, le=500),
     offset: int = Query(default=0, ge=0),
     svc: ConferenceService = Depends(get_conference_service),
@@ -50,6 +53,8 @@ def list_conferences(
         status=status,
         start_after=start_after,
         start_before=start_before,
+        sort_by=sort_by,
+        sort_order=sort_order,
         limit=limit,
         offset=offset,
     )
@@ -121,6 +126,22 @@ def delete_important_date(
 ):
     if not svc.delete_date(date_id):
         raise HTTPException(status_code=404, detail="Date not found")
+
+
+class DisplayGloballyUpdate(BaseModel):
+    display_globally: bool
+
+
+@router.patch("/dates/{date_id}/display-globally", response_model=ImportantDate)
+def update_date_display_globally(
+    date_id: str,
+    body: DisplayGloballyUpdate,
+    svc: ConferenceService = Depends(get_conference_service),
+):
+    dt = svc.update_date_display_globally(date_id, body.display_globally)
+    if dt is None:
+        raise HTTPException(status_code=404, detail="Date not found")
+    return dt
 
 
 # --- Sources ---
