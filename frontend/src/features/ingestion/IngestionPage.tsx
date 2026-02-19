@@ -22,7 +22,7 @@ import {
   CardTitle,
 } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { ROUTES } from "@/router";
+import { ROUTES } from "@/router/routes";
 import { useIngestUrl } from "./useIngestion";
 import type { IngestResponse } from "@/types";
 

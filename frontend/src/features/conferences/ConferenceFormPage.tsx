@@ -11,7 +11,7 @@ import { FormField } from "@/components/ui/FormField";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
 import { SpinnerPage } from "@/components/ui/Spinner";
 import { Card, CardContent } from "@/components/ui/Card";
-import { ROUTES } from "@/router";
+import { ROUTES } from "@/router/routes";
 import {
   useConference,
   useCreateConference,

@@ -10,16 +10,10 @@ import { RefreshPage } from "@/features/refresh/RefreshPage";
 import { NotFoundPage } from "./NotFoundPage";
 import { ErrorBoundaryPage } from "./ErrorBoundaryPage";
 
-export const ROUTES = {
-  dashboard: "/",
-  conferences: "/conferences",
-  conferenceNew: "/conferences/new",
-  conferenceDetail: (id = ":id") => `/conferences/${id}`,
-  conferenceEdit: (id = ":id") => `/conferences/${id}/edit`,
-  ingestion: "/ingest",
-  discovery: "/discover",
-  refresh: "/refresh",
-} as const;
+// Re-export so callers that do `import { ROUTES } from "@/router"` still work,
+// but the canonical definition lives in routes.ts (no dependencies) to break
+// the circular import: router/index → layout → Sidebar → router/index.
+export { ROUTES } from "./routes";
 
 export const router = createBrowserRouter([
   {

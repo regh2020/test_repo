@@ -8,7 +8,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
-import { ROUTES } from "@/router";
+import { ROUTES } from "@/router/routes";
 
 interface NavItem {
   to: string;
