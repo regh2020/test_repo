@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDate, formatDateRange, timeAgo } from "@/utils/date";
 import { ROUTES } from "@/router/routes";
 import { useUpcomingConferences, useRecentConferences } from "./useDashboard";
+import { YearlyTimeline } from "./YearlyTimeline";
 import type { Conference } from "@/types";
 
 export function DashboardPage() {
@@ -106,6 +107,11 @@ export function DashboardPage() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Yearly Timeline */}
+      <div className="mt-6">
+        <YearlyTimeline />
       </div>
     </div>
   );

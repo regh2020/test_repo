@@ -2,13 +2,12 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Edit2,
   ExternalLink,
-  RefreshCw,
-  PlusCircle,
   Trash2,
   MapPin,
   Calendar,
   Globe,
   Tag,
+  Users,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +16,6 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { SpinnerPage } from "@/components/ui/Spinner";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
 import {
   Card,
   CardContent,
@@ -38,6 +36,7 @@ import {
 import { AddSourceDialog } from "./AddSourceDialog";
 import { AddDateDialog } from "./AddDateDialog";
 import { RefreshConferenceButton } from "../refresh/RefreshConferenceButton";
+import type { Person } from "@/types";
 
 export function ConferenceDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -89,6 +88,18 @@ export function ConferenceDetailPage() {
           </div>
         }
       />
+
+      {/* AI Summary */}
+      {conf.ai_summary && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-slate-600">AI Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-slate-700 leading-relaxed">{conf.ai_summary}</p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column: main info */}
@@ -200,6 +211,36 @@ export function ConferenceDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Organizing Committee */}
+          {conf.organizing_committee && conf.organizing_committee.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-slate-500" />
+                  <CardTitle>Organizing Committee</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CommitteeList people={conf.organizing_committee} />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Scientific Committee */}
+          {conf.scientific_committee && conf.scientific_committee.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-slate-500" />
+                  <CardTitle>Scientific Committee</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CommitteeList people={conf.scientific_committee} />
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Right column: sources */}
@@ -287,6 +328,37 @@ function InfoRow({
   );
 }
 
+function CommitteeList({ people }: { people: Person[] }) {
+  return (
+    <ul className="space-y-2">
+      {people.map((person, idx) => (
+        <li key={idx} className="text-sm flex items-start gap-2">
+          <div className="min-w-0">
+            {person.personalUrl ? (
+              <a
+                href={person.personalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-brand-600 hover:underline"
+              >
+                {person.fullName}
+              </a>
+            ) : (
+              <span className="font-medium text-slate-800">{person.fullName}</span>
+            )}
+            {person.role && (
+              <span className="text-xs text-slate-500 ml-1.5">· {person.role}</span>
+            )}
+            {person.affiliation && (
+              <p className="text-xs text-slate-400">{person.affiliation}</p>
+            )}
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function ImportantDateTable({
   conferenceId,
   dates,
@@ -306,7 +378,7 @@ function ImportantDateTable({
 
   // Submission deadlines and conference starts are always globally displayed
   const isAutoGlobal = (type: string) =>
-    type === "submission_deadline" || type === "conference_start";
+    type === "submission_deadline" || type === "conference_start_date";
 
   return (
     <table className="w-full text-sm">
@@ -345,7 +417,7 @@ function ImportantDateTable({
               {isAutoGlobal(d.type) ? (
                 <span className="text-xs text-slate-400 italic">Always</span>
               ) : (
-                <label className="flex items-center gap-1.5 cursor-pointer">
+                <label className="flex items-center cursor-pointer" title="Show this date on the global Important Dates page">
                   <input
                     type="checkbox"
                     className="rounded"
@@ -357,7 +429,6 @@ function ImportantDateTable({
                       })
                     }
                   />
-                  <span className="text-xs text-slate-500">Show globally</span>
                 </label>
               )}
             </td>

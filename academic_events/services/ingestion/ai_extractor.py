@@ -12,7 +12,7 @@ from typing import Any
 
 import anthropic
 
-from academic_events.models.conference import ExtractionMethod, ExtractionRecord
+from academic_events.models.conference import ExtractionMethod, ExtractionRecord, Person
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +37,28 @@ Return ONLY a valid JSON object with these fields (use null for any field you ca
   "end_date": "YYYY-MM-DD format",
   "cfp_url": "URL to call for papers if found",
   "website_url": "Main conference website URL if found",
+  "ai_summary": "One concise paragraph summarizing the conference (purpose, topics, audience). Do not hallucinate. If insufficient info, return null.",
   "important_dates": [
     {
-      "type": "submission_deadline|notification|camera_ready|workshop_deadline|early_registration|conference_start|conference_end|other",
+      "type": "submission_deadline|abstract_submission_deadline|notification_date|camera_ready_deadline|conference_start_date|conference_end_date|workshop_deadline|registration_deadline|other",
       "date": "YYYY-MM-DD",
       "note": "Brief description of this date"
+    }
+  ],
+  "organizing_committee": [
+    {
+      "fullName": "Full name of the person",
+      "affiliation": "Institution or organization (or null)",
+      "role": "Role in the committee (e.g., General Chair, Program Chair) (or null)",
+      "personalUrl": "Personal webpage URL if found (or null)"
+    }
+  ],
+  "scientific_committee": [
+    {
+      "fullName": "Full name of the person",
+      "affiliation": "Institution or organization (or null)",
+      "role": "Role (or null)",
+      "personalUrl": "Personal webpage URL if found (or null)"
     }
   ],
   "relevant_links": [
@@ -56,8 +73,11 @@ Return ONLY a valid JSON object with these fields (use null for any field you ca
 Rules:
 - Dates must be in YYYY-MM-DD format. If only month/year given, use the 1st of the month.
 - For is_online/is_hybrid, default to false unless clearly stated.
-- Extract ALL important dates you find (deadlines, notifications, camera-ready, etc.).
-- For relevant_links, identify links on the page that likely contain additional conference info (CFP pages, venue info, registration, important dates pages, etc.). Only include links with high or medium relevance.
+- Extract ALL important dates you find. Use the canonical type names exactly.
+- For important_dates, each typed date (not 'other') should appear at most once in your output.
+- For organizing_committee and scientific_committee: extract all listed members. Normalize names (trim whitespace). Avoid duplicates.
+- For relevant_links, identify links that likely contain additional conference info. Only include high or medium relevance.
+- For ai_summary: write one paragraph only. Base it solely on text found on the page. Do not invent facts.
 - Be thorough: extract every piece of conference information visible in the text.
 - Return ONLY the JSON object, no markdown, no explanation.
 """
@@ -68,15 +88,15 @@ async def ai_extract_fields(
     page_url: str,
     source_id: str,
     api_key: str | None = None,
-) -> tuple[list[ExtractionRecord], list[dict]]:
+) -> tuple[list[ExtractionRecord], list[dict], str | None, list[Person], list[Person]]:
     """Use AI to extract conference fields from unstructured text.
 
-    Returns a tuple of (extraction_records, relevant_links).
-    relevant_links is a list of dicts with 'url' and 'description' keys.
+    Returns a tuple of:
+      (extraction_records, relevant_links, ai_summary, organizing_committee, scientific_committee)
     """
     if not api_key:
         logger.warning("No Anthropic API key configured; AI extraction skipped")
-        return [], []
+        return [], [], None, [], []
 
     try:
         client = anthropic.AsyncAnthropic(api_key=api_key)
@@ -97,7 +117,7 @@ async def ai_extract_fields(
         )
     except Exception as exc:
         logger.error("AI extraction API call failed: %s", exc)
-        return [], []
+        return [], [], None, [], []
 
     # Parse the AI response
     raw = message.content[0].text.strip()
@@ -112,7 +132,7 @@ async def ai_extract_fields(
         data: dict[str, Any] = json.loads(raw)
     except json.JSONDecodeError:
         logger.error("AI extraction returned invalid JSON: %s", raw[:200])
-        return [], []
+        return [], [], None, [], []
 
     records: list[ExtractionRecord] = []
 
@@ -216,10 +236,43 @@ async def ai_extract_fields(
                     }
                 )
 
+    # AI summary
+    ai_summary: str | None = data.get("ai_summary")
+    if ai_summary and not isinstance(ai_summary, str):
+        ai_summary = None
+
+    # Committee members
+    def _parse_committee(raw: Any) -> list[Person]:
+        if not isinstance(raw, list):
+            return []
+        people: list[Person] = []
+        seen_names: set[str] = set()
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            full_name = (item.get("fullName") or "").strip()
+            if not full_name or full_name in seen_names:
+                continue
+            seen_names.add(full_name)
+            people.append(
+                Person(
+                    fullName=full_name,
+                    affiliation=item.get("affiliation") or None,
+                    role=item.get("role") or None,
+                    personalUrl=item.get("personalUrl") or None,
+                )
+            )
+        return people
+
+    organizing_committee = _parse_committee(data.get("organizing_committee"))
+    scientific_committee = _parse_committee(data.get("scientific_committee"))
+
     logger.info(
-        "AI extraction from %s: %d records, %d relevant links",
+        "AI extraction from %s: %d records, %d relevant links, org=%d, sci=%d",
         page_url,
         len(records),
         len(relevant_links),
+        len(organizing_committee),
+        len(scientific_committee),
     )
-    return records, relevant_links
+    return records, relevant_links, ai_summary, organizing_committee, scientific_committee

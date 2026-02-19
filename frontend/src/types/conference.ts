@@ -8,12 +8,13 @@ export type ConferenceStatus =
 
 export type ImportantDateType =
   | "submission_deadline"
-  | "notification"
-  | "camera_ready"
+  | "abstract_submission_deadline"
+  | "notification_date"
+  | "camera_ready_deadline"
+  | "conference_start_date"
+  | "conference_end_date"
   | "workshop_deadline"
-  | "early_registration"
-  | "conference_start"
-  | "conference_end"
+  | "registration_deadline"
   | "other";
 
 export type SourceType = "website" | "cfp" | "twitter" | "rss";
@@ -21,6 +22,13 @@ export type SourceType = "website" | "cfp" | "twitter" | "rss";
 export type ExtractionMethod = "heuristic" | "structured" | "manual";
 
 // ─── Core domain models (mirrors backend read schemas) ────────────────────────
+
+export interface Person {
+  fullName: string;
+  affiliation: string | null;
+  role: string | null;
+  personalUrl: string | null;
+}
 
 export interface Conference {
   id: string;
@@ -41,6 +49,9 @@ export interface Conference {
   created_at: string;
   updated_at: string;
   submission_deadline: string | null;
+  ai_summary: string | null;
+  organizing_committee: Person[];
+  scientific_committee: Person[];
 }
 
 export interface ImportantDate {

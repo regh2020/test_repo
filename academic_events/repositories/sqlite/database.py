@@ -23,7 +23,10 @@ CREATE TABLE IF NOT EXISTS conferences (
     website_url TEXT,
     status TEXT DEFAULT 'active',
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    ai_summary TEXT,
+    organizing_committee TEXT,  -- JSON array of Person objects
+    scientific_committee TEXT   -- JSON array of Person objects
 );
 
 CREATE TABLE IF NOT EXISTS important_dates (
@@ -110,19 +113,72 @@ class SQLiteDatabase:
     def _run_migrations(self) -> None:
         """Apply incremental schema migrations for existing databases."""
         assert self._conn is not None
-        # Add display_globally column if missing
-        cols = {
+
+        # --- important_dates table migrations ---
+        date_cols = {
             row[1]
             for row in self._conn.execute("PRAGMA table_info(important_dates)")
         }
-        if "display_globally" not in cols:
+        if "display_globally" not in date_cols:
             self._conn.execute(
                 "ALTER TABLE important_dates ADD COLUMN display_globally INTEGER DEFAULT 0"
             )
+
+        # --- conferences table migrations ---
+        conf_cols = {
+            row[1]
+            for row in self._conn.execute("PRAGMA table_info(conferences)")
+        }
+        if "ai_summary" not in conf_cols:
+            self._conn.execute("ALTER TABLE conferences ADD COLUMN ai_summary TEXT")
+        if "organizing_committee" not in conf_cols:
+            self._conn.execute(
+                "ALTER TABLE conferences ADD COLUMN organizing_committee TEXT"
+            )
+        if "scientific_committee" not in conf_cols:
+            self._conn.execute(
+                "ALTER TABLE conferences ADD COLUMN scientific_committee TEXT"
+            )
+
         # Migrate 'unknown' and 'upcoming' statuses
         self._conn.execute(
             "UPDATE conferences SET status = 'active' WHERE status IN ('unknown', 'upcoming')"
         )
+
+        # --- Migrate old ImportantDateType values to canonical names ---
+        _TYPE_RENAMES = {
+            "notification": "notification_date",
+            "camera_ready": "camera_ready_deadline",
+            "conference_start": "conference_start_date",
+            "conference_end": "conference_end_date",
+            "early_registration": "registration_deadline",
+        }
+        for old_val, new_val in _TYPE_RENAMES.items():
+            self._conn.execute(
+                "UPDATE important_dates SET type = ? WHERE type = ?",
+                (new_val, old_val),
+            )
+
+        # --- Remove duplicate typed dates, keeping one entry per (conference_id, type) ---
+        # Uses EXISTS subquery to avoid requiring window function support.
+        self._conn.execute(
+            """DELETE FROM important_dates
+               WHERE type != 'other'
+                 AND rowid NOT IN (
+                   SELECT MIN(rowid)
+                   FROM important_dates
+                   WHERE type != 'other'
+                   GROUP BY conference_id, type
+                 )"""
+        )
+
+        # --- Add unique partial index for non-'other' dates ---
+        self._conn.execute(
+            """CREATE UNIQUE INDEX IF NOT EXISTS idx_important_dates_conference_type
+               ON important_dates(conference_id, type)
+               WHERE type != 'other'"""
+        )
+
         self._conn.commit()
 
     @property

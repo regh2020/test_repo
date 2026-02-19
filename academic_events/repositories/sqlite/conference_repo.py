@@ -9,6 +9,7 @@ from academic_events.models.conference import (
     ConferenceCreate,
     ConferenceStatus,
     ConferenceUpdate,
+    Person,
 )
 from academic_events.repositories.interfaces import ConferenceRepository
 from academic_events.repositories.sqlite.database import SQLiteDatabase
@@ -27,8 +28,9 @@ class SQLiteConferenceRepository(ConferenceRepository):
             """INSERT INTO conferences
                (id, name, acronym, series, topics, city, country, venue,
                 is_online, is_hybrid, start_date, end_date, cfp_url,
-                website_url, status, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                website_url, status, created_at, updated_at,
+                ai_summary, organizing_committee, scientific_committee)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 conf.id,
                 conf.name,
@@ -47,6 +49,9 @@ class SQLiteConferenceRepository(ConferenceRepository):
                 conf.status.value,
                 conf.created_at,
                 conf.updated_at,
+                conf.ai_summary,
+                json.dumps([p.model_dump() for p in conf.organizing_committee]) if conf.organizing_committee else None,
+                json.dumps([p.model_dump() for p in conf.scientific_committee]) if conf.scientific_committee else None,
             ),
         )
         self._db.conn.commit()
@@ -57,6 +62,22 @@ class SQLiteConferenceRepository(ConferenceRepository):
         sd = submission_deadline
         if sd is None and "submission_deadline" in keys:
             sd = row["submission_deadline"]
+
+        # Parse committee JSON columns safely
+        def _parse_people(raw: str | None) -> list[Person]:
+            if not raw:
+                return []
+            try:
+                items = json.loads(raw)
+                return [Person(**item) for item in items if isinstance(item, dict)]
+            except (json.JSONDecodeError, TypeError, ValueError):
+                return []
+
+        # Handle rows that may not have new columns (pre-migration)
+        ai_summary = row["ai_summary"] if "ai_summary" in keys else None
+        organizing_raw = row["organizing_committee"] if "organizing_committee" in keys else None
+        scientific_raw = row["scientific_committee"] if "scientific_committee" in keys else None
+
         return Conference(
             id=row["id"],
             name=row["name"],
@@ -76,6 +97,9 @@ class SQLiteConferenceRepository(ConferenceRepository):
             created_at=row["created_at"],
             updated_at=row["updated_at"],
             submission_deadline=sd,
+            ai_summary=ai_summary,
+            organizing_committee=_parse_people(organizing_raw),
+            scientific_committee=_parse_people(scientific_raw),
         )
 
     def get(self, conference_id: str) -> Conference | None:
@@ -182,6 +206,14 @@ class SQLiteConferenceRepository(ConferenceRepository):
             if key == "topics":
                 set_clauses.append("topics = ?")
                 params.append(json.dumps(value))
+            elif key in ("organizing_committee", "scientific_committee"):
+                set_clauses.append(f"{key} = ?")
+                if value is None:
+                    params.append(None)
+                else:
+                    params.append(
+                        json.dumps([p.model_dump() if hasattr(p, "model_dump") else p for p in value])
+                    )
             elif key == "is_online" or key == "is_hybrid":
                 set_clauses.append(f"{key} = ?")
                 params.append(int(value))

@@ -15,6 +15,7 @@ from academic_events.models.conference import (
     Source,
     SourceCreate,
 )
+from academic_events.repositories.sqlite.important_date_repo import DuplicateDateTypeError
 from academic_events.services.conference_service import ConferenceService
 
 router = APIRouter(prefix="/conferences", tags=["conferences"])
@@ -105,7 +106,10 @@ def add_important_date(
     data: ImportantDateCreate,
     svc: ConferenceService = Depends(get_conference_service),
 ):
-    dt = svc.add_date(conference_id, data)
+    try:
+        dt = svc.add_date(conference_id, data)
+    except DuplicateDateTypeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     if dt is None:
         raise HTTPException(status_code=404, detail="Conference not found")
     return dt
