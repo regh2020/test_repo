@@ -3,6 +3,7 @@ import type {
   Conference,
   ConferenceCreate,
   ConferenceFilters,
+  ConferenceTimelineItem,
   ConferenceUpdate,
   ExtractionRecord,
   GlobalImportantDate,
@@ -84,6 +85,12 @@ export const conferencesApi = {
   listGlobalImportantDates(): Promise<GlobalImportantDate[]> {
     return http
       .get<GlobalImportantDate[]>("/important-dates")
+      .then((r) => r.data);
+  },
+
+  getTimeline(year: number): Promise<ConferenceTimelineItem[]> {
+    return http
+      .get<ConferenceTimelineItem[]>("/conferences/timeline", { params: { year } })
       .then((r) => r.data);
   },
 

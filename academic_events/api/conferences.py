@@ -61,6 +61,43 @@ def list_conferences(
     )
 
 
+class ConferenceTimelineItem(BaseModel):
+    id: str
+    name: str
+    acronym: str | None
+    start_date: str | None
+    end_date: str | None
+    submission_deadline: str | None
+    city: str | None
+    country: str | None
+
+
+@router.get("/timeline", response_model=list[ConferenceTimelineItem])
+def get_conference_timeline(
+    year: int = Query(default=..., description="Calendar year to show"),
+    svc: ConferenceService = Depends(get_conference_service),
+):
+    """Return all conferences with start dates in the given year, with timeline fields."""
+    conferences = svc.list_conferences(
+        start_after=f"{year}-01-01",
+        start_before=f"{year}-12-31",
+        limit=500,
+    )
+    return [
+        ConferenceTimelineItem(
+            id=conf.id,
+            name=conf.name,
+            acronym=conf.acronym,
+            start_date=conf.start_date,
+            end_date=conf.end_date,
+            submission_deadline=conf.submission_deadline,
+            city=conf.city,
+            country=conf.country,
+        )
+        for conf in conferences
+    ]
+
+
 @router.get("/{conference_id}", response_model=Conference)
 def get_conference(
     conference_id: str,

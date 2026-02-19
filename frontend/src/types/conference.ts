@@ -144,3 +144,14 @@ export interface GlobalImportantDate {
   date: ImportantDate;
   conference: Conference;
 }
+
+export interface ConferenceTimelineItem {
+  id: string;
+  name: string;
+  acronym: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  submission_deadline: string | null;
+  city: string | null;
+  country: string | null;
+}

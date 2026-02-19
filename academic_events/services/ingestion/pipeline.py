@@ -103,16 +103,19 @@ class IngestionPipeline:
                 api_key=ANTHROPIC_API_KEY,
             )
 
-            # 5. Follow relevant links to gather additional data
-            if ai_relevant_links or result.html:
+            # 5. Conditionally follow deep links only if core fields are missing.
+            # This prevents wasteful crawling when the main page is sufficient.
+            merged_so_far = self._merge_records(ai_records, heuristic_records)
+            if not self._has_core_fields(merged_so_far):
+                # Core data incomplete — follow limited deep links (max 3)
+                # that are most likely to contain dates or CFP info.
                 linked_pages = await follow_relevant_links(
                     html=result.html,
                     base_url=url,
                     ai_suggested_links=ai_relevant_links,
-                    max_pages=MAX_LINKED_PAGES,
+                    max_pages=min(MAX_LINKED_PAGES, 3),
                 )
 
-                # Run AI extraction on each linked page and merge results
                 for linked in linked_pages:
                     page_records, _, _, page_org, page_sci = await ai_extract_fields(
                         text=linked["text"],
@@ -125,6 +128,12 @@ class IngestionPipeline:
                         ai_organizing_committee.extend(page_org)
                     if page_sci:
                         ai_scientific_committee.extend(page_sci)
+                    # Stop early once core fields are satisfied
+                    if self._has_core_fields(self._merge_records(ai_records, heuristic_records)):
+                        logger.info("Core fields satisfied after deep link, stopping crawl early")
+                        break
+            else:
+                logger.info("Core fields present on main page — skipping deep link crawl")
 
         # 6. Merge records: AI records take priority (higher confidence),
         #    but keep heuristic records for fields AI didn't find
@@ -252,6 +261,29 @@ class IngestionPipeline:
             return None
         candidates.sort(key=lambda r: r.confidence, reverse=True)
         return candidates[0].extracted_value
+
+    @staticmethod
+    def _has_core_fields(records: list[ExtractionRecord]) -> bool:
+        """Return True if all four core fields are present in the extraction records.
+
+        Core fields required to skip deep link crawling:
+        - Conference start date
+        - Conference end date
+        - Location (city, country, or online flag)
+        - Submission deadline important date
+        """
+        def _has(field: str) -> bool:
+            return any(r.field_name == field and r.extracted_value for r in records)
+
+        has_start = _has("start_date")
+        has_end = _has("end_date")
+        has_location = _has("city") or _has("country") or any(
+            r.field_name == "is_online" and r.extracted_value == "true" for r in records
+        )
+        has_submission = any(
+            r.field_name == "important_date:submission_deadline" for r in records
+        )
+        return has_start and has_end and has_location and has_submission
 
     @staticmethod
     def _merge_records(
