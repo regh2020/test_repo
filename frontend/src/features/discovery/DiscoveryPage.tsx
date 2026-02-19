@@ -22,7 +22,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { ROUTES } from "@/router";
+import { ROUTES } from "@/router/routes";
 import { truncate, displayUrl } from "@/utils/format";
 import { useDiscover, useImportCandidate } from "./useDiscovery";
 import type { DiscoveryCandidate } from "@/types";

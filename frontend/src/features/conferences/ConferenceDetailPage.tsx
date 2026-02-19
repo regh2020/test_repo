@@ -24,7 +24,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
-import { ROUTES } from "@/router";
+import { ROUTES } from "@/router/routes";
 import { formatDate, formatDateRange, timeAgo } from "@/utils/date";
 import { formatImportantDateType, displayUrl } from "@/utils/format";
 import {

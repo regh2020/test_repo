@@ -15,7 +15,7 @@ import { ErrorMessage } from "@/components/ui/ErrorMessage";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Badge } from "@/components/ui/Badge";
-import { ROUTES } from "@/router";
+import { ROUTES } from "@/router/routes";
 import { formatDateRange, timeAgo } from "@/utils/date";
 import { useConferences } from "./useConferences";
 import type { Conference, ConferenceFilters, ConferenceStatus } from "@/types";

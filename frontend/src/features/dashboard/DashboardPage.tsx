@@ -13,7 +13,7 @@ import { SpinnerPage } from "@/components/ui/Spinner";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDate, formatDateRange, timeAgo } from "@/utils/date";
-import { ROUTES } from "@/router";
+import { ROUTES } from "@/router/routes";
 import { useUpcomingConferences, useRecentConferences } from "./useDashboard";
 import type { Conference } from "@/types";
 
